@@ -1,0 +1,180 @@
+#include <SDL.h>
+#include <stdio.h>
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+void logSDLError(std::ostream& os,const std::string &msg, bool fatal = false);
+
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+const string WINDOW_TITLE = "An Implementation of Code.org Painter";
+
+void initSDL(SDL_Window* &window, SDL_Renderer* &renderer);
+
+void quitSDL(SDL_Window* window, SDL_Renderer* renderer);
+
+void waitUntilKeyPressed();
+
+void refreshScreen(SDL_Window* window, SDL_Renderer* renderer, const SDL_Rect& filled_rect);
+
+
+struct Box {
+    int x;
+    int y;
+    int w;
+    int h;
+    void render (SDL_Renderer* &renderer) {
+        SDL_Rect filled_rect;
+        filled_rect.x = x;
+        filled_rect.y = y;
+        filled_rect.w = w;
+        filled_rect.h = h;
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // green
+        SDL_RenderFillRect(renderer, &filled_rect);
+    }
+    void moveRight () {
+        x+=5;
+    }
+    void moveLeft () {
+        x-=5;
+    }
+    void moveUp () {
+        y-=5;
+    }
+    void moveDown () {
+        y+=5;
+    }
+    bool inside(int minX,int minY,int maxX,int maxY) {
+        return (minX<=x && minY<=y && maxX>=x+w && maxY>=h);
+    }
+};
+
+
+
+
+int main(int argc, char* argv[])
+{
+    srand(time(NULL));
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    initSDL(window, renderer);
+
+    SDL_Event e;
+    Box box2;
+    box2.x = rand() % 800 + 1;
+    box2.y = rand() % 600 + 1;
+    box2.w = 8;
+    box2.h = 8;
+    SDL_RenderClear(renderer);
+    box2.render(renderer);
+    SDL_RenderPresent(renderer);
+
+    // Your drawing code here
+    // use SDL_RenderPresent(renderer) to show it
+    Box box;
+    box.x=10;
+    box.y=10;
+    box.w=8;
+    box.h=8;
+
+    while (box.inside(0,0,SCREEN_WIDTH,SCREEN_HEIGHT)) {
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+        SDL_RenderClear(renderer);
+        box.render(renderer);
+        SDL_RenderPresent(renderer);
+        waitUntilKeyPressed();
+        if ( SDL_WaitEvent(&e) == 0) continue;
+
+        // Nếu sự kiện là kết thúc (như đóng cửa sổ) thì thoát khỏi vòng lặp
+        if (e.type == SDL_QUIT) break;
+
+        // Nếu có một phím được nhấn, thì xét phím đó là gì để xử lý tiếp
+        if (e.type == SDL_KEYDOWN) {
+        	switch (e.key.keysym.sym) {
+        		case SDLK_ESCAPE: break; // Nếu nhấn phìm ESC thì thoát khỏi vòng lặp
+        		// Nếu phím mũi tên trái, dịch sang trái
+    	        // (cộng chiều rộng, trừ bước, rồi lấy phần dư để giá trị luôn dương, và hiệu ứng quay vòng)
+        		case SDLK_LEFT : box.moveLeft();
+        			break;
+        		// Tương tự với dịch phải, xuống và lên
+            	case SDLK_RIGHT: box.moveRight();
+            		break;
+            	case SDLK_DOWN: box.moveDown();
+					break;
+            	case SDLK_UP: box.moveUp();
+            		break;
+        		default: break;
+			}
+        }
+
+
+        SDL_Delay(1);
+    }
+
+
+
+    quitSDL(window, renderer);
+    return 0;
+}
+
+
+
+
+
+void waitUntilKeyPressed()
+{
+    SDL_Event e;
+    while (true) {
+        if ( SDL_WaitEvent(&e) != 0 &&
+             (e.type == SDL_KEYDOWN || e.type == SDL_QUIT) )
+            return;
+        //SDL_Delay(1);
+    }
+}
+
+void quitSDL(SDL_Window* window, SDL_Renderer* renderer)
+{
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+}
+
+void initSDL(SDL_Window* &window, SDL_Renderer* &renderer)
+{
+    if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
+        logSDLError(std::cout, "SDL_Init", true);
+
+    window = SDL_CreateWindow(WINDOW_TITLE.c_str(), SDL_WINDOWPOS_CENTERED,
+       SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    //window = SDL_CreateWindow(WINDOW_TITLE.c_str(), SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    if (window == nullptr) logSDLError(std::cout, "CreateWindow", true);
+
+
+    //Khi thông thường chạy với môi trường bình thường ở nhà
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED |
+                                              SDL_RENDERER_PRESENTVSYNC);
+    //Khi chạy ở máy thực hành WinXP ở trường (máy ảo)
+    //renderer = SDL_CreateSoftwareRenderer(SDL_GetWindowSurface(window));
+    if (renderer == nullptr) logSDLError(std::cout, "CreateRenderer", true);
+
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+}
+
+
+void logSDLError(std::ostream& os,
+                 const std::string &msg, bool fatal)
+{
+    os << msg << " Error: " << SDL_GetError() << std::endl;
+    if (fatal) {
+        SDL_Quit();
+        exit(1);
+    }
+}
+
+
+
+
