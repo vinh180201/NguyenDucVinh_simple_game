@@ -21,12 +21,22 @@ void waitUntilKeyPressed();
 
 void refreshScreen(SDL_Window* window, SDL_Renderer* renderer, const SDL_Rect& filled_rect);
 
+int gameContinue (SDL_Window* &window,SDL_Renderer* &renderer,bool check);
 
+void emergeSetBack (SDL_Renderer* &renderer,float &x1,float &x2,float &y1,float &y2, int count);
 struct Box {
     float x;
     float y;
     float w;
     float h;
+    float stepX=0;
+    float stepY=0;
+    Box (float _x,float _y,float _w,float _h) {
+        x=_x;
+        y=_y;
+        w=_w;
+        h=_h;
+    }
     void render (SDL_Renderer* &renderer) {
         SDL_Rect filled_rect;
         filled_rect.x = x;
@@ -36,42 +46,42 @@ struct Box {
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // green
         SDL_RenderFillRect(renderer, &filled_rect);
     }
+    void move () {
+        x+=stepX;
+        y+=stepY;
+    }
     void moveRight () {
-        x+=5;
+        stepX=3;
+        stepY=0;
     }
     void moveLeft () {
-        x-=5;
+        stepX=-3;
+        stepY=0;
     }
     void moveUp () {
-        y-=5;
+        stepX=0;
+        stepY=-3;
     }
     void moveDown () {
-        y+=5;
+        stepX=0;
+        stepY=3;
     }
     bool inside(float minX,float minY,float maxX,float maxY) {
         return (minX<=x && minY<=y && maxX>=x+w && maxY>=y+h);
     }
     bool destroyByHorizonal (float y1,float y2,int count) {
-        float a=1.0*sqrt(790*790+(y1-y2)*(y1-y2));
-        float b=1.0*(sqrt(x*x+(y-y1)*(y-y1))+1.0*sqrt((790-x)*(790-x)+(y-y2)*(y-y2)));
-        cout << "a=" << a << " b=" << b << " ";
-        if (count%20==15) {
-            return !(b-2.5<=a && a<=b+2.5);
-        }
-        else {
-            return true;
-        }
+        float a=1.0*sqrt(795*795+(y1-y2)*(y1-y2));
+        float b=1.0*(sqrt((x+5)*(x+5)+(y+5-y1)*(y+5-y1))+1.0*sqrt((790-x)*(790-x)+(y+5-y2)*(y+5-y2)));
+        //cout << "a=" << a << " b=" << b << endl;
+        if (count%20==15) return !(a+0.13>=b);
+        else return true;
     }
     bool destroyByVertical (float x1,float x2,int count) {
-        float a=1.0*sqrt(590*590+(x1-x2)*(x1-x2));
-        float b=1.0*(sqrt(y*y+(x-x1)*(x-x1))+1.0*sqrt((590-y)*(590-y)+(x-x2)*(x-x2)));
-        cout << "a=" << a << " b=" << b << " ";
-        if (count%20==15) {
-            return !(b-2.5<=a && a<=b+2.5);
-        }
-        else {
-            return true;
-        }
+        float a=1.0*sqrt(595*595+(x1-x2)*(x1-x2));
+        float b=1.0*(sqrt((y+5)*(y+5)+(x+5-x1)*(x+5-x1))+1.0*sqrt((590-y)*(590-y)+(x+5-x2)*(x+5-x2)));
+        //cout << "a=" << a << " b=" << b << endl;
+        if (count%20==15) return !(a+0.15>=b);
+        else return true;
     }
 };
 
@@ -142,7 +152,6 @@ void initSetBackVertical (SDL_Renderer* &renderer,float x1,float x2,int count) {
     setBack1.createSetBackVertical(renderer);
     SDL_RenderPresent(renderer);
 
-
     ObstacleVertical setBack2(x2,590,10,10);
     setBack2.createSetBackVertical(renderer);
     SDL_RenderPresent(renderer);
@@ -154,139 +163,136 @@ void initSetBackVertical (SDL_Renderer* &renderer,float x1,float x2,int count) {
     }
 }
 
+int playGame();
+
 int main(int argc, char* argv[])
 {
-    srand(time(NULL));
+    while (true) {
+        if (!playGame()) break;
+    }
+    return 0;
+}
+
+int playGame () {
+    //srand(time(NULL));
     SDL_Window* window;
     SDL_Renderer* renderer;
     initSDL(window, renderer);
+    Box box (15,20,10,10);
+    int count=0;
+    bool check=true;
     float x1=rand()%(SCREEN_WIDTH-9);
     float x2=rand()%(SCREEN_WIDTH-9);
     float y1=rand()%(SCREEN_HEIGHT-9);
     float y2=rand()%(SCREEN_HEIGHT-9);
     SDL_Event e;
-
-
-    Box box;
-    box.x=0;
-    box.y=0;
-    box.w=10;
-    box.h=10;
-    int count=0;
     while (box.inside(0,0,SCREEN_WIDTH,SCREEN_HEIGHT)) {
+        //cout << "dau";
+        box.move();
         if (box.destroyByHorizonal(y1,y2,count)==false || box.destroyByVertical(x1,x2,count)==false) {
             initSetBackHorizonal(renderer,y1,y2,15);
             initSetBackVertical(renderer,x1,x2,15);
-            SDL_Delay(200);
+            check=false;
+            //SDL_Delay(400);
             break;
         }
-
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderClear(renderer);
         box.render(renderer);
         SDL_RenderPresent(renderer);
-        if (count%20==0) {
-            x1= rand()%(SCREEN_WIDTH-9);
-            x2= rand()%(SCREEN_WIDTH-9);
-            y1= rand()%(SCREEN_HEIGHT-9);
-            y2= rand()%(SCREEN_HEIGHT-9);
-            cout << "x1=" << x1 << " x2=" << x2 << " y1=" << y1 << " y2=" << y2 << " ";
-        }
-        if ( 5<=count%20 && count%20<=15) {
-
-            initSetBackHorizonal(renderer,y1,y2,count);
-            initSetBackVertical(renderer,x1,x2,count);
-        }
-        cout << "count=" << count << endl ;
+        emergeSetBack(renderer,x1,x2,y1,y2,count);
+        //cout << "count=" << count << endl ;
         count++;
-        waitUntilKeyPressed();
-        if ( SDL_WaitEvent(&e) == 0) continue;
-
-        // Nếu sự kiện là kết thúc (như đóng cửa sổ) thì thoát khỏi vòng lặp
+        //waitUntilKeyPressed();
+        if ( SDL_PollEvent(&e) == 0) continue;
         if (e.type == SDL_QUIT) break;
-
-        // Nếu có một phím được nhấn, thì xét phím đó là gì để xử lý tiếp
         if (e.type == SDL_KEYDOWN) {
-        	switch (e.key.keysym.sym) {
-        		case SDLK_ESCAPE: break; // Nếu nhấn phìm ESC thì thoát khỏi vòng lặp
-        		// Nếu phím mũi tên trái, dịch sang trái
-    	        // (cộng chiều rộng, trừ bước, rồi lấy phần dư để giá trị luôn dương, và hiệu ứng quay vòng)
-        		case SDLK_LEFT : box.moveLeft();
-        			break;
-        		// Tương tự với dịch phải, xuống và lên
-            	case SDLK_RIGHT: box.moveRight();
-            		break;
-            	case SDLK_DOWN: box.moveDown();
-					break;
-            	case SDLK_UP: box.moveUp();
-            		break;
-        		default: break;
-			}
+            switch (e.key.keysym.sym) {
+                case SDLK_ESCAPE: break;
+                case SDLK_LEFT : box.moveLeft(); break;
+                case SDLK_RIGHT: box.moveRight(); break;
+                case SDLK_DOWN: box.moveDown(); break;
+                case SDLK_UP: box.moveUp(); break;
+                default: break;
+            }
         }
-
-        SDL_Delay(1);
+    //cout << "cuoi";
     }
+    //cout << "gameplay";
+    return gameContinue(window,renderer,check);
+}
 
-
-
-    quitSDL(window, renderer);
-    return 0;
+void emergeSetBack (SDL_Renderer* &renderer,float &x1,float &x2,float &y1,float &y2, int count) {
+    if (count%20==0) {
+        x1=20;// rand()%(SCREEN_WIDTH-9);
+        x2=20;// rand()%(SCREEN_WIDTH-9);
+        y1=20;// rand()%(SCREEN_HEIGHT-9);
+        y2=20;// rand()%(SCREEN_HEIGHT-9);
+        //cout << "x1=" << x1 << " x2=" << x2 << " y1=" << y1 << " y2=" << y2 << endl;
+    }
+    if (0<=count%20 && count%20<5) {
+        SDL_Delay(50);
+    }
+    if ( 5<=count%20 && count%20<=19) {
+        initSetBackHorizonal(renderer,y1,y2,count);
+        initSetBackVertical(renderer,x1,x2,count);
+    }
 }
 
 
+int gameContinue (SDL_Window* &window,SDL_Renderer* &renderer,bool check) {
+    //cout << "continue";
+    SDL_Event e;
+    if (check==false) {
+        while (!(e.key.keysym.sym==SDLK_1 || e.key.keysym.sym==SDLK_0)) {
+            SDL_WaitEvent(&e);
+        }
+        if (e.key.keysym.sym==SDLK_1) {
+            quitSDL(window, renderer);
+            return 1;
+        }
+        else if (e.key.keysym.sym==SDLK_0) {
+            quitSDL(window, renderer);
+            return 0;
+        }
+    }
+    else {
+        quitSDL(window, renderer);
+        return 1;
+    }
+}
 
-
-
-void waitUntilKeyPressed()
-{
+void waitUntilKeyPressed() {
     SDL_Event e;
     while (true) {
-        if ( SDL_WaitEvent(&e) != 0 &&
-             (e.type == SDL_KEYDOWN || e.type == SDL_QUIT) )
+        if ( SDL_WaitEvent(&e) != 0 &&(e.type == SDL_KEYDOWN || e.type == SDL_QUIT) )
             return;
-        SDL_Delay(1);
     }
 }
 
-void quitSDL(SDL_Window* window, SDL_Renderer* renderer)
-{
+void quitSDL(SDL_Window* window, SDL_Renderer* renderer) {
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 }
 
-void initSDL(SDL_Window* &window, SDL_Renderer* &renderer)
-{
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
-        logSDLError(std::cout, "SDL_Init", true);
-
-    window = SDL_CreateWindow(WINDOW_TITLE.c_str(), SDL_WINDOWPOS_CENTERED,
-       SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    //window = SDL_CreateWindow(WINDOW_TITLE.c_str(), SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_FULLSCREEN_DESKTOP);
-    if (window == nullptr) logSDLError(std::cout, "CreateWindow", true);
-
-
-    //Khi thông thường chạy với môi trường bình thường ở nhà
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED |
-                                              SDL_RENDERER_PRESENTVSYNC);
-    //Khi chạy ở máy thực hành WinXP ở trường (máy ảo)
-    //renderer = SDL_CreateSoftwareRenderer(SDL_GetWindowSurface(window));
-    if (renderer == nullptr) logSDLError(std::cout, "CreateRenderer", true);
-
+void initSDL(SDL_Window* &window, SDL_Renderer* &renderer) {
+    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {logSDLError(std::cout, "SDL_Init", true);}
+    window = SDL_CreateWindow(WINDOW_TITLE.c_str(), SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    if (window == nullptr) {logSDLError(std::cout, "CreateWindow", true);}
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED |SDL_RENDERER_PRESENTVSYNC);
+    if (renderer == nullptr) {logSDLError(std::cout, "CreateRenderer", true);}
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
-
-void logSDLError(std::ostream& os,const std::string &msg, bool fatal)
-{
+void logSDLError(std::ostream& os,const std::string &msg, bool fatal) {
     os << msg << " Error: " << SDL_GetError() << std::endl;
     if (fatal) {
         SDL_Quit();
         exit(1);
     }
 }
-
 
 
 
