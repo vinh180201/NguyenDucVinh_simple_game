@@ -43,8 +43,14 @@ struct Box {
         if (SCREEN_WIDTH/4<=x+stepX && x+stepX+10<=SCREEN_WIDTH/4*3) {
             x+=stepX;
         }
+        else {
+            x-=stepX*15;
+        }
         if (SCREEN_HEIGHT/4<=y+stepY && y+stepY+10<=SCREEN_HEIGHT/4*3) {
             y+=stepY;
+        }
+        else {
+            y-=stepY*15;
         }
     }
     void moveRight () {
@@ -67,14 +73,14 @@ struct Box {
         float a=1.0*sqrt((SCREEN_WIDTH-5)*(SCREEN_WIDTH-5)+(y1-y2)*(y1-y2));
         float b=1.0*(sqrt((x+5)*(x+5)+(y+5-y1)*(y+5-y1))+1.0*sqrt((SCREEN_WIDTH-10-x)*(SCREEN_WIDTH-10-x)+(y+5-y2)*(y+5-y2)));
         //cout << "a=" << a << " b=" << b << endl;
-        if (count==15) return (a+0.13>=b);
+        if (count>=15) return (a+0.13>=b);
         else return false;
     }
     bool destroyByVertical (float x1,float x2,int count) {
         float a=1.0*sqrt((SCREEN_HEIGHT-5)*(SCREEN_HEIGHT-5)+(x1-x2)*(x1-x2));
         float b=1.0*(sqrt((y+5)*(y+5)+(x+5-x1)*(x+5-x1))+1.0*sqrt((SCREEN_HEIGHT-10-y)*(SCREEN_HEIGHT-10-y)+(x+5-x2)*(x+5-x2)));
         //cout << "a=" << a << " b=" << b << endl;
-        if (count==15) return (a+0.15>=b);
+        if (count>=15) return (a+0.15>=b);
         else return false;
     }
     void controlBox(SDL_Event e) {
