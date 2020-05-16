@@ -5,37 +5,30 @@
 #include <ctime>
 #include <cmath>
 
-using namespace std;
 
-void logSDLError(std::ostream& os,const std::string &msg, bool fatal = false);
+using namespace std;
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
-const string WINDOW_TITLE = "An Implementation of Code.org Painter";
+const string WINDOW_TITLE = "Game rac";
 
-void initSDL(SDL_Window* &window, SDL_Renderer* &renderer);
-
-void quitSDL(SDL_Window* window, SDL_Renderer* renderer);
-
-void waitUntilKeyPressed();
-
-void refreshScreen(SDL_Window* window, SDL_Renderer* renderer, const SDL_Rect& filled_rect);
-
-int gameContinue (SDL_Window* &window,SDL_Renderer* &renderer,bool check);
-
-void emergeSetBack (SDL_Renderer* &renderer,float &x1,float &x2,float &y1,float &y2, int count);
 struct Box {
-    float x;
-    float y;
-    float w;
-    float h;
-    float stepX=0;
-    float stepY=0;
+    float x,y,w,h,stepX=0,stepY=0;
     Box (float _x,float _y,float _w,float _h) {
         x=_x;
         y=_y;
         w=_w;
         h=_h;
+    }
+    void deleteBox (SDL_Renderer* &renderer,int count) {
+        SDL_Rect filled_rect;
+        filled_rect.x = x;
+        filled_rect.y = y;
+        filled_rect.w = w;
+        filled_rect.h = h;
+        if (count<15) SDL_SetRenderDrawColor(renderer, 125, 125, 125, 255);
+        if (count>=15) SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderFillRect(renderer, &filled_rect);
     }
     void render (SDL_Renderer* &renderer) {
         SDL_Rect filled_rect;
@@ -43,12 +36,16 @@ struct Box {
         filled_rect.y = y;
         filled_rect.w = w;
         filled_rect.h = h;
-        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // green
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
         SDL_RenderFillRect(renderer, &filled_rect);
     }
     void move () {
-        x+=stepX;
-        y+=stepY;
+        if (SCREEN_WIDTH/4<=x+stepX && x+stepX+10<=SCREEN_WIDTH/4*3) {
+            x+=stepX;
+        }
+        if (SCREEN_HEIGHT/4<=y+stepY && y+stepY+10<=SCREEN_HEIGHT/4*3) {
+            y+=stepY;
+        }
     }
     void moveRight () {
         stepX=3;
@@ -66,22 +63,19 @@ struct Box {
         stepX=0;
         stepY=3;
     }
-    bool inside(float minX,float minY,float maxX,float maxY) {
-        return (minX<=x && minY<=y && maxX>=x+w && maxY>=y+h);
-    }
     bool destroyByHorizonal (float y1,float y2,int count) {
-        float a=1.0*sqrt(795*795+(y1-y2)*(y1-y2));
-        float b=1.0*(sqrt((x+5)*(x+5)+(y+5-y1)*(y+5-y1))+1.0*sqrt((790-x)*(790-x)+(y+5-y2)*(y+5-y2)));
+        float a=1.0*sqrt((SCREEN_WIDTH-5)*(SCREEN_WIDTH-5)+(y1-y2)*(y1-y2));
+        float b=1.0*(sqrt((x+5)*(x+5)+(y+5-y1)*(y+5-y1))+1.0*sqrt((SCREEN_WIDTH-10-x)*(SCREEN_WIDTH-10-x)+(y+5-y2)*(y+5-y2)));
         //cout << "a=" << a << " b=" << b << endl;
-        if (count%20==15) return !(a+0.13>=b);
-        else return true;
+        if (count==15) return (a+0.13>=b);
+        else return false;
     }
     bool destroyByVertical (float x1,float x2,int count) {
-        float a=1.0*sqrt(595*595+(x1-x2)*(x1-x2));
-        float b=1.0*(sqrt((y+5)*(y+5)+(x+5-x1)*(x+5-x1))+1.0*sqrt((590-y)*(590-y)+(x+5-x2)*(x+5-x2)));
+        float a=1.0*sqrt((SCREEN_HEIGHT-5)*(SCREEN_HEIGHT-5)+(x1-x2)*(x1-x2));
+        float b=1.0*(sqrt((y+5)*(y+5)+(x+5-x1)*(x+5-x1))+1.0*sqrt((SCREEN_HEIGHT-10-y)*(SCREEN_HEIGHT-10-y)+(x+5-x2)*(x+5-x2)));
         //cout << "a=" << a << " b=" << b << endl;
-        if (count%20==15) return !(a+0.15>=b);
-        else return true;
+        if (count==15) return (a+0.15>=b);
+        else return false;
     }
     void controlBox(SDL_Event e) {
         if (e.type == SDL_KEYDOWN) {
@@ -94,155 +88,158 @@ struct Box {
                 default: break;
             }
         }
+
     }
 };
 
-struct ObstacleHorizonal {
-    float x;
-    float y;
-    float w;
-    float h;
-    ObstacleHorizonal (float _x,float _y,float _w,float _h) {
-        x=_x;
-        y=_y;
-        w=_w;
-        h=_h;
-    }
-    void createSetBackHorizonal(SDL_Renderer* &renderer) {
-        SDL_Rect filled_rect;
-        filled_rect.x = x;
-        filled_rect.y = y;
-        filled_rect.w = w;
-        filled_rect.h = h;
-        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-        SDL_RenderFillRect(renderer, &filled_rect);
-    }
-};
+void logSDLError(std::ostream& os,const std::string &msg, bool fatal = false);
 
-void initSetBackHorizonal (SDL_Renderer* &renderer,float y1,float y2,int count) {
-    //srand(time(NULL));
-    ObstacleHorizonal setBack1(0,y1,10,10);
-    setBack1.createSetBackHorizonal(renderer);
-    SDL_RenderPresent(renderer);
+void initSDL(SDL_Window* &window, SDL_Renderer* &renderer);
 
-    ObstacleHorizonal setBack2(790,y2,10,10);
-    setBack2.createSetBackHorizonal(renderer);
-    SDL_RenderPresent(renderer);
+void quitSDL(SDL_Window* window, SDL_Renderer* renderer);
 
-    SDL_SetRenderDrawColor(renderer,0,0,255,255);
-    if (count%20==15) {
-        SDL_RenderDrawLine(renderer,0,y1,790,y2);
-        SDL_RenderPresent(renderer);
-    }
-}
+void waitUntilKeyPressed();
 
-struct ObstacleVertical {
-    float x;
-    float y;
-    float w;
-    float h;
-    ObstacleVertical (float _x,float _y,float _w,float _h) {
-        x=_x;
-        y=_y;
-        w=_w;
-        h=_h;
-    }
-    void createSetBackVertical(SDL_Renderer* &renderer) {
-        SDL_Rect filled_rect;
-        filled_rect.x = x;
-        filled_rect.y = y;
-        filled_rect.w = w;
-        filled_rect.h = h;
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        SDL_RenderFillRect(renderer, &filled_rect);
-    }
-};
+int gameContinue (SDL_Window* &window,SDL_Renderer* &renderer,bool check);
 
-void initSetBackVertical (SDL_Renderer* &renderer,float x1,float x2,int count) {
-    //srand(time(NULL));
-    ObstacleVertical setBack1(x1,0,10,10);
-    setBack1.createSetBackVertical(renderer);
-    SDL_RenderPresent(renderer);
+void emergeSetBack (SDL_Renderer* &renderer,float &x1,float &x2,float &y1,float &y2, int count);
 
-    ObstacleVertical setBack2(x2,590,10,10);
-    setBack2.createSetBackVertical(renderer);
-    SDL_RenderPresent(renderer);
+void initSetBackHorizonal (SDL_Renderer* &renderer,float y1,float y2,int count);
 
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    if (count%20==15) {
-        SDL_RenderDrawLine(renderer,x1,0,x2,590);
-        SDL_RenderPresent(renderer);
-    }
-}
+void createSetBackHorizonal(SDL_Renderer* &renderer,float x,float y);
+
+void initSetBackVertical (SDL_Renderer* &renderer,float x1,float x2,int count);
+
+void createSetBackVertical(SDL_Renderer* &renderer,float x,float y);
+
+void createLimitArea(SDL_Renderer *renderer);
 
 int playGame();
 
 int main(int argc, char* argv[])
 {
     while (true) {
+        cout << "Welcome to my game.Press 1 to continue.Press 0 to end game!" << endl;
         if (!playGame()) break;
     }
     return 0;
 }
 
 int playGame () {
-    //srand(time(NULL));
     SDL_Window* window;
     SDL_Renderer* renderer;
     initSDL(window, renderer);
-    Box box (15,20,10,10);
+    Box box (SCREEN_WIDTH/2,SCREEN_HEIGHT/2,10,10);
     int count=0;
-    int level=3;
     bool check=true;
     float x1=0,x2=0,y1=0,y2=0;
     SDL_Event e;
-    while (box.inside(0,0,SCREEN_WIDTH,SCREEN_HEIGHT)) {
-        //cout << "dau";
+    while (true) {
         box.move();
-        if (box.destroyByHorizonal(y1,y2,count)==false || box.destroyByVertical(x1,x2,count)==false) {
-            initSetBackHorizonal(renderer,y1,y2,15);
-            initSetBackVertical(renderer,x1,x2,15);
-            check=false;
-            //SDL_Delay(400);
-            break;
-        }
+        count%=20;
+        if (count<15) createLimitArea(renderer);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderClear(renderer);
+        if (count==0) {SDL_RenderClear(renderer);}
         box.render(renderer);
         SDL_RenderPresent(renderer);
         emergeSetBack(renderer,x1,x2,y1,y2,count);
-        //cout << "count=" << count << endl ;
-        count++;
-        //waitUntilKeyPressed();
+        ++count;
+        if (box.destroyByHorizonal(y1,y2,count)==true || box.destroyByVertical(x1,x2,count)==true) {
+            initSetBackHorizonal(renderer,y1,y2,15);
+            initSetBackVertical(renderer,x1,x2,15);
+            check=false;
+            break;
+        }
+        box.deleteBox(renderer,count);
+        SDL_RenderPresent(renderer);
         if ( SDL_PollEvent(&e) == 0) continue;
         if (e.type == SDL_QUIT) break;
         box.controlBox(e);
-    //cout << "cuoi";
     }
-    //cout << "gameplay";
     return gameContinue(window,renderer,check);
 }
 
-void emergeSetBack (SDL_Renderer* &renderer,float &x1,float &x2,float &y1,float &y2, int count) {
-        if (count%20==0) {
-            x1= rand()%(SCREEN_WIDTH-9);
-            x2= rand()%(SCREEN_WIDTH-9);
-            y1= rand()%(SCREEN_HEIGHT-9);
-            y2= rand()%(SCREEN_HEIGHT-9);
-            //cout << "x1=" << x1 << " x2=" << x2 << " y1=" << y1 << " y2=" << y2 << endl;
-        }
-        if (0<=count%20 && count%20<5) {
-            SDL_Delay(50);
-        }
-        if ( 5<=count%20 && count%20<=19) {
-            initSetBackHorizonal(renderer,y1,y2,count);
-            initSetBackVertical(renderer,x1,x2,count);
-        }
+void createLimitArea (SDL_Renderer *renderer) {
+    SDL_Rect filled_rect;
+    filled_rect.x = SCREEN_WIDTH/4;
+    filled_rect.y = SCREEN_HEIGHT/4;
+    filled_rect.w = SCREEN_WIDTH/2;
+    filled_rect.h = SCREEN_HEIGHT/2;
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderFillRect(renderer, &filled_rect);
 }
 
+void createSetBackVertical(SDL_Renderer* &renderer,float x,float y) {
+    SDL_Rect filled_rect;
+    filled_rect.x = x;
+    filled_rect.y = y;
+    filled_rect.w = 10;
+    filled_rect.h = 10;
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_RenderFillRect(renderer, &filled_rect);
+}
+
+void initSetBackVertical (SDL_Renderer* &renderer,float x1,float x2,int count) {
+    createSetBackVertical(renderer,x1,0);
+    SDL_RenderPresent(renderer);
+
+    createSetBackVertical(renderer,x2,SCREEN_HEIGHT-10);
+    SDL_RenderPresent(renderer);
+
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    if (count==15) {
+        SDL_RenderDrawLine(renderer,x1,0,x2,SCREEN_HEIGHT-10);
+        SDL_RenderPresent(renderer);
+    }
+}
+
+void createSetBackHorizonal(SDL_Renderer* &renderer,float x,float y) {
+    SDL_Rect filled_rect;
+    filled_rect.x = x;
+    filled_rect.y = y;
+    filled_rect.w = 10;
+    filled_rect.h = 10;
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+    SDL_RenderFillRect(renderer, &filled_rect);
+}
+
+void initSetBackHorizonal (SDL_Renderer* &renderer,float y1,float y2,int count) {
+    createSetBackHorizonal(renderer,0,y1);
+    SDL_RenderPresent(renderer);
+
+    createSetBackHorizonal(renderer,SCREEN_WIDTH-10,y2);
+    SDL_RenderPresent(renderer);
+
+    SDL_SetRenderDrawColor(renderer,0,0,255,255);
+    if (count==15) {
+        SDL_RenderDrawLine(renderer,0,y1,SCREEN_WIDTH-10,y2);
+        SDL_RenderPresent(renderer);
+    }
+}
+
+void emergeSetBack (SDL_Renderer* &renderer,float &x1,float &x2,float &y1,float &y2, int count) {
+    switch (count) {
+        case 0:
+            x1= rand()%(SCREEN_WIDTH*3/4-9);
+            x2= SCREEN_WIDTH/4+rand()%(SCREEN_WIDTH*3/4-9);
+            y1= rand()%(SCREEN_HEIGHT*3/4-9);
+            y2= SCREEN_HEIGHT/4+rand()%(SCREEN_HEIGHT*3/4-9);
+            SDL_Delay(50);
+            break;
+        case 1:case 2:case 3:case 4:
+            SDL_Delay(50);
+            break;
+        case 5:case 7:case 9:case 11:case 13:case 15:case 17:case 19:
+            initSetBackHorizonal(renderer,y1,y2,count);
+            initSetBackVertical(renderer,x1,x2,count);
+            break;
+        case 6:case 8:case 10:case 12:case 14:case 16:case 18:
+            SDL_Delay(50);
+            break;
+    }
+}
 
 int gameContinue (SDL_Window* &window,SDL_Renderer* &renderer,bool check) {
-    //cout << "continue";
     SDL_Event e;
     if (check==false) {
         while (!(e.key.keysym.sym==SDLK_1 || e.key.keysym.sym==SDLK_0)) {
@@ -294,3 +291,22 @@ void logSDLError(std::ostream& os,const std::string &msg, bool fatal) {
         exit(1);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
